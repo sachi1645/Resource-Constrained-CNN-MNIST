@@ -1,0 +1,6 @@
+{
+  "trainable_parameters": 3989,
+  "total_parameters": 3989,
+  "model_size_mb": 0.0165,
+  "best_validation_accuracy": 0.9696
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "device": "cpu",
+    "model": "standard",
+    "trainable_parameters": 896906,
+    "model_size_mb": 3.421425,
+    "average_inference_ms": 0.613123,
+    "system_memory_percent": 53.6
+  },
+  {
+    "device": "cpu",
+    "model": "lightweight",
+    "trainable_parameters": 3989,
+    "model_size_mb": 0.016491,
+    "average_inference_ms": 0.999679,
+    "system_memory_percent": 53.6
+  },
+  {
+    "device": "cuda",
+    "model": "standard",
+    "trainable_parameters": 896906,
+    "model_size_mb": 3.421425,
+    "average_inference_ms": 0.814918,
+    "system_memory_percent": 55.3
+  },
+  {
+    "device": "cuda",
+    "model": "lightweight",
+    "trainable_parameters": 3989,
+    "model_size_mb": 0.016491,
+    "average_inference_ms": 1.222732,
+    "system_memory_percent": 55.5
+  }
+]
