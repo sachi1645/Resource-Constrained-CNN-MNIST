@@ -9,11 +9,39 @@ EMNIST_MEAN = 0.1307
 EMNIST_STD = 0.3081
 
 
-EMNIST_TRANSFORM = transforms.Compose([
+# ---------------------------------------------------------
+# Training transformation
+# ---------------------------------------------------------
+# Augmentation is applied ONLY to training images.
+# This helps the model learn different handwriting variations.
+# ---------------------------------------------------------
+
+EMNIST_TRAIN_TRANSFORM = transforms.Compose([
+    transforms.RandomAffine(
+        degrees=10,
+        translate=(0.10, 0.10),
+        scale=(0.90, 1.10),
+    ),
     transforms.ToTensor(),
     transforms.Normalize(
         (EMNIST_MEAN,),
-        (EMNIST_STD,)
+        (EMNIST_STD,),
+    ),
+])
+
+
+# ---------------------------------------------------------
+# Validation / Test transformation
+# ---------------------------------------------------------
+# No random augmentation here.
+# Validation and test data must remain unchanged.
+# ---------------------------------------------------------
+
+EMNIST_EVAL_TRANSFORM = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(
+        (EMNIST_MEAN,),
+        (EMNIST_STD,),
     ),
 ])
 
@@ -23,42 +51,87 @@ def get_emnist_datasets(
     validation_size=10000,
     seed=42,
 ):
-    """
-    Download and prepare the EMNIST Balanced dataset.
-
-    EMNIST Balanced contains 47 balanced character classes.
-    """
-
     data_dir = Path(data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
+
+    data_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    # -----------------------------------------------------
+    # Full training dataset
+    # -----------------------------------------------------
 
     full_train_dataset = datasets.EMNIST(
         root=data_dir,
         split="balanced",
         train=True,
         download=True,
-        transform=EMNIST_TRANSFORM,
+        transform=EMNIST_TRAIN_TRANSFORM,
     )
+
+    # -----------------------------------------------------
+    # Separate evaluation dataset
+    # -----------------------------------------------------
 
     test_dataset = datasets.EMNIST(
         root=data_dir,
         split="balanced",
         train=False,
         download=True,
-        transform=EMNIST_TRANSFORM,
+        transform=EMNIST_EVAL_TRANSFORM,
     )
 
-    train_size = len(full_train_dataset) - validation_size
+    # -----------------------------------------------------
+    # Train / validation split
+    # -----------------------------------------------------
+
+    train_size = (
+        len(full_train_dataset)
+        - validation_size
+    )
 
     generator = torch.Generator().manual_seed(seed)
 
     train_dataset, validation_dataset = random_split(
         full_train_dataset,
-        [train_size, validation_size],
+        [
+            train_size,
+            validation_size,
+        ],
         generator=generator,
     )
 
-    return train_dataset, validation_dataset, test_dataset
+    # -----------------------------------------------------
+    # IMPORTANT
+    # -----------------------------------------------------
+    # random_split uses the same underlying dataset.
+    #
+    # Therefore validation would also receive the training
+    # augmentation if we simply returned it.
+    #
+    # We create a second EMNIST dataset with evaluation
+    # transforms and reuse the validation indices.
+    # -----------------------------------------------------
+
+    full_eval_dataset = datasets.EMNIST(
+        root=data_dir,
+        split="balanced",
+        train=True,
+        download=False,
+        transform=EMNIST_EVAL_TRANSFORM,
+    )
+
+    validation_dataset = torch.utils.data.Subset(
+        full_eval_dataset,
+        validation_dataset.indices,
+    )
+
+    return (
+        train_dataset,
+        validation_dataset,
+        test_dataset,
+    )
 
 
 def get_emnist_dataloaders(
@@ -68,10 +141,6 @@ def get_emnist_dataloaders(
     num_workers=0,
     seed=42,
 ):
-    """
-    Create DataLoaders for EMNIST Balanced.
-    """
-
     train_dataset, validation_dataset, test_dataset = (
         get_emnist_datasets(
             data_dir=data_dir,
@@ -104,4 +173,8 @@ def get_emnist_dataloaders(
         pin_memory=torch.cuda.is_available(),
     )
 
-    return train_loader, validation_loader, test_loader
+    return (
+        train_loader,
+        validation_loader,
+        test_loader,
+    )
